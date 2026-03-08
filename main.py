@@ -1,4 +1,5 @@
 import pandas as pd
+import random
 
 def readDatasetAndCreateDataframe():
     # Display dataset options to User
@@ -24,14 +25,33 @@ def readDatasetAndCreateDataframe():
 
     # Read dataset at filepath into dataframe
         # - Values are delimited by whitespace
-    dataframe = pd.read_csv(filepath, sep=r'\s+', header=None)
+    df = pd.read_csv(filepath, sep=r'\s+', header=None)
 
-    return dataframe
+    return df
+
+def featureSelectionSearch(df):
+    dfNumRows = df.shape[0]
+    dfNumCols = df.shape[1] - 1 # Exclude class label column 0
+    
+    features = list(range(1, dfNumCols + 1)) # List of unchosen features
+    currentFeatures = [] # List of chosen features 
+
+    for level in range(1, dfNumCols + 1):
+        print(f"On level {level} of the search tree")
+        for feature in features:
+            print(f"--Considering adding feature {feature}")
+
+        # TEMP: Choose random feature/column, pop it from features and add it to currentFeatures
+        item = features.pop(random.randint(0, len(features) - 1))
+        currentFeatures.append(item)
+        print(f"On level {level} added feature {item} to current set")
+
+    return currentFeatures
 
 def main():
-    dataframe = readDatasetAndCreateDataframe()
-
-    print(dataframe.head(10))
+    df = readDatasetAndCreateDataframe()
+    featuresList = featureSelectionSearch(df)
+    print(featuresList)
 
 if __name__ == "__main__":
     main()
