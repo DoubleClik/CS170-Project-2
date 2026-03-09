@@ -29,6 +29,9 @@ def readDatasetAndCreateDataframe():
 
     return df
 
+def leaveOneOutCrossValidation(df, currentFeatures, feature):
+    return random.uniform(0, 1)
+
 def featureSelectionSearch(df):
     dfNumRows = df.shape[0]
     dfNumCols = df.shape[1] - 1 # Exclude class label column 0
@@ -38,11 +41,19 @@ def featureSelectionSearch(df):
 
     for level in range(1, dfNumCols + 1):
         print(f"On level {level} of the search tree")
+        featureIndex = 0
+        bestIndex = 0
+        bestAccuracy = 0.0
+
         for feature in features:
             print(f"--Considering adding feature {feature}")
-
-        # TEMP: Choose random feature/column, pop it from features and add it to currentFeatures
-        item = features.pop(random.randint(0, len(features) - 1))
+            accuracy = leaveOneOutCrossValidation(0,0,0)
+            if accuracy > bestAccuracy:
+                bestAccuracy = accuracy
+                bestIndex = featureIndex
+            featureIndex += 1
+        
+        item = features.pop(bestIndex)
         currentFeatures.append(item)
         print(f"On level {level} added feature {item} to current set")
 
