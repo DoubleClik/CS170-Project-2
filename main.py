@@ -1,5 +1,6 @@
 import pandas as pd
 import random
+import math ## math.dist() for euclidian distance
 
 def readDatasetAndCreateDataframe():
     # Display dataset options to User
@@ -29,40 +30,79 @@ def readDatasetAndCreateDataframe():
 
     return df
 
-def leaveOneOutCrossValidation(df, currentFeatures, feature):
-    return random.uniform(0, 1)
+def leaveOneOutCrossValidation(df, currentSet, featureToAdd):
+    dfNumRows = df.shape[0]
+    successfulPredicitons = 0
+
+    # Features to evaluate: current set plus the candidate feature
+    featuresToUse = currentSet + [featureToAdd]
+
+    # Outerloop to classify each row (object) in df
+    for i, rowToClassify in enumerate(df.itertuples()):
+        # itertuples: position 0 = pandas Index, position 1 = column 0 (class label), position N+1 = column N
+        realClassification = rowToClassify[1]
+
+        nearestNeighborDistance = float('inf')
+        nearestNeighborLocation = -1
+        nearestNeighborClass = -1
+
+        # Coordinate of rowToClassify (x) to find euclidian distance
+        xValue = [rowToClassify[feature + 1] for feature in featuresToUse]
+
+        # Innerloop to find the nearest neighbor to row (object) being classified
+        for j, rowBeingChecked in enumerate(df.itertuples()):
+            # Do NOT check the same row as rowToClassify as a nearestNeighbor candidate
+            if i != j:
+                # Coordinate of rowBeingChecked (y) to find euclidian distance
+                yValue = [rowBeingChecked[feature + 1] for feature in featuresToUse]
+
+                # If distance between rowToClassify (x) and rowBeingChecked (y) is less than the previous best nearestNeighborDistance, then update
+                distance = math.dist(xValue, yValue) # Python math libary dist() function for Euclidean distance
+                if distance < nearestNeighborDistance:
+                    nearestNeighborDistance = distance
+                    nearestNeighborLocation = j
+                    nearestNeighborClass = rowBeingChecked[1]
+
+        # If class prediction is correct, increment succesfulPredicitons counter by 1
+        if nearestNeighborClass == realClassification:
+            successfulPredicitons += 1
+        # print(f"Object {i} is Class {realClassification}")
+        # print(f"Its nearest neighbor is Object {nearestNeighborLocation}, which is Class {nearestNeighborClass}")
+
+    return successfulPredicitons / dfNumRows
 
 def featureSelectionSearch(df):
     dfNumRows = df.shape[0]
     dfNumCols = df.shape[1] - 1 # Exclude class label column 0
     
     features = list(range(1, dfNumCols + 1)) # List of unchosen features
-    currentFeatures = [] # List of chosen features 
+    currentFeaturesAndAccuracy = [] # List of (chosen feature, bestAccuracy) tuples for chosen features
 
     for level in range(1, dfNumCols + 1):
-        print(f"On level {level} of the search tree")
+        # print(f"On level {level} of the search tree")
         featureIndex = 0
         bestIndex = 0
         bestAccuracy = 0.0
 
         for feature in features:
-            print(f"--Considering adding feature {feature}")
-            accuracy = leaveOneOutCrossValidation(0,0,0)
+            # print(f"--Considering adding feature {feature}")
+            accuracy = leaveOneOutCrossValidation(df, [feature for feature, _ in currentFeaturesAndAccuracy], feature)
             if accuracy > bestAccuracy:
                 bestAccuracy = accuracy
                 bestIndex = featureIndex
             featureIndex += 1
-        
-        item = features.pop(bestIndex)
-        currentFeatures.append(item)
-        print(f"On level {level} added feature {item} to current set")
 
-    return currentFeatures
+        item = features.pop(bestIndex)
+        currentFeaturesAndAccuracy.append((item, bestAccuracy))
+        # print(f"On level {level} added feature {item} to current set")
+
+    return currentFeaturesAndAccuracy
 
 def main():
     df = readDatasetAndCreateDataframe()
-    featuresList = featureSelectionSearch(df)
-    print(featuresList)
+    featuresAndAccuracy = featureSelectionSearch(df)
+
+    print(featuresAndAccuracy)
 
 if __name__ == "__main__":
     main()
