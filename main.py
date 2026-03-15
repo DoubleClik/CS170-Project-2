@@ -71,49 +71,98 @@ def leaveOneOutCrossValidation(df, currentSet, featureToAdd):
 
     return successfulPredicitons / dfNumRows
 
-def forwardSelectionSearch(df):
+def featureSelectionSearch(df):
     dfNumRows = df.shape[0]
-    dfNumCols = df.shape[1] - 1 # Exclude class label column 0
-    
-    features = list(range(1, dfNumCols + 1)) # List of unchosen features
-    currentFeaturesAndAccuracy = [] # List of (chosen feature, bestAccuracy) tuples for chosen features
+    dfNumCols = df.shape[1] - 1
 
+    # Candidate features not yet added to the current set
+    features = list(range(1, dfNumCols + 1))
+    # Ordered list of (feature, accuracy) as features are greedily selected
+    currentFeaturesAndAccuracy = []
+
+    bestOverallAccuracy = 0.0
+    bestOverallSubset = []
+
+    print(f"\nThis dataset has {dfNumCols} features (not including the class attribute), with {dfNumRows} instances.")
+
+    # Accuracy with all features upfront
+    allFeaturesAccuracy = leaveOneOutCrossValidation(df, list(range(1, dfNumCols)), dfNumCols)
+    print(f'\nRunning nearest neighbor with all {dfNumCols} features, using "leaving-one-out" evaluation, I get an accuracy of {allFeaturesAccuracy * 100:.1f}%')
+
+    print("\nBeginning Forward Selection search.\n")
+
+    # Outer loop: each level greedily adds the single best remaining feature
     for level in range(1, dfNumCols + 1):
-        # print(f"On level {level} of the search tree")
         featureIndex = 0
         bestIndex = 0
         bestAccuracy = 0.0
+        bestFeature = -1
 
+        # Features committed in previous levels (without accuracy values)
+        currentSet = [f for f, _ in currentFeaturesAndAccuracy]
+
+        # Inner loop: evaluate each remaining candidate by temporarily adding it
         for feature in features:
-            # print(f"--Considering adding feature {feature}")
-            accuracy = leaveOneOutCrossValidation(df, [feature for feature, _ in currentFeaturesAndAccuracy], feature)
+            accuracy = leaveOneOutCrossValidation(df, currentSet, feature)
+            print(f"\tUsing feature(s) {set(currentSet + [feature])} accuracy is {accuracy * 100:.1f}%")
+
+            # Track the candidate with the highest accuracy at this level
             if accuracy > bestAccuracy:
                 bestAccuracy = accuracy
                 bestIndex = featureIndex
+                bestFeature = feature
             featureIndex += 1
 
+        # Commit the best candidate: move it from the pool into the current set
         item = features.pop(bestIndex)
         currentFeaturesAndAccuracy.append((item, bestAccuracy))
-        # print(f"On level {level} added feature {item} to current set")
+        currentSet = [f for f, _ in currentFeaturesAndAccuracy]
 
+        # Warn if accuracy dropped, but continue searching in case of local maxima
+        if bestAccuracy < bestOverallAccuracy:
+            print(f"\n(Warning, Accuracy has decreased! Continuing search in case of local maxima)")
+        else:
+            bestOverallAccuracy = bestAccuracy
+            bestOverallSubset = currentSet[:]
+
+        print(f"Feature set {set(currentSet)} was best, accuracy is {bestAccuracy * 100:.1f}%\n")
+
+    print(f"Finished search! The best feature subset is {set(bestOverallSubset)}, which has an accuracy of {bestOverallAccuracy * 100:.1f}%")
     return currentFeaturesAndAccuracy
+
 
 def backwardEliminationSearch(df):
     dfNumRows = df.shape[0]
-    dfNumCols = df.shape[1] - 1  # Exclude class label column 0
+    dfNumCols = df.shape[1] - 1
 
-    features = list(range(1, dfNumCols + 1))  # Start with ALL features
-    currentFeaturesAndAccuracy = []            # Tracks (removed feature, bestAccuracy)
+    # Start with all features; one is removed per level
+    features = list(range(1, dfNumCols + 1))
+    # Ordered list of (feature, accuracy) as features are greedily removed
+    currentFeaturesAndAccuracy = []
 
+    bestOverallAccuracy = 0.0
+    bestOverallSubset = []
+
+    print(f"\nThis dataset has {dfNumCols} features (not including the class attribute), with {dfNumRows} instances.")
+
+    # Accuracy with all features upfront
+    allFeaturesAccuracy = leaveOneOutCrossValidation(df, list(range(1, dfNumCols)), dfNumCols)
+    print(f'\nRunning nearest neighbor with all {dfNumCols} features, using "leaving-one-out" evaluation, I get an accuracy of {allFeaturesAccuracy * 100:.1f}%')
+
+    print("\nBeginning Backward Elimination search.\n")
+
+    # Outer loop: each level greedily removes the single worst remaining feature
     for level in range(1, dfNumCols + 1):
         featureIndex = 0
         bestIndex = 0
         bestAccuracy = 0.0
 
+        # Inner loop: evaluate each feature as the candidate to remove
         for feature in features:
+            # candidateSet is all remaining features except the one being tested for removal
             candidateSet = [f for f in features if f != feature]
-            
-            # Skip if no features left to evaluate
+
+            # Edge case: removing the last feature leaves an empty set — skip evaluation
             if len(candidateSet) == 0:
                 bestIndex = featureIndex
                 bestAccuracy = 0.0
@@ -121,20 +170,34 @@ def backwardEliminationSearch(df):
                 continue
 
             accuracy = leaveOneOutCrossValidation(df, candidateSet[:-1], candidateSet[-1])
-            
+            print(f"\tUsing feature(s) {set(candidateSet)} accuracy is {accuracy * 100:.1f}%")
+
+            # Track which removal produced the highest accuracy at this level
             if accuracy > bestAccuracy:
                 bestAccuracy = accuracy
                 bestIndex = featureIndex
             featureIndex += 1
 
+        # Commit the removal: pop the worst feature out of the active set
         item = features.pop(bestIndex)
         currentFeaturesAndAccuracy.append((item, bestAccuracy))
 
+        # Warn if accuracy dropped, but continue searching in case of local maxima
+        if bestAccuracy < bestOverallAccuracy:
+            print(f"\n(Warning, Accuracy has decreased! Continuing search in case of local maxima)")
+        else:
+            bestOverallAccuracy = bestAccuracy
+            # bestOverallSubset is the remaining features after the removal
+            bestOverallSubset = features[:]
+
+        print(f"Feature set {set(features)} was best, accuracy is {bestAccuracy * 100:.1f}%\n")
+
+    print(f"Finished search! The best feature subset is {set(bestOverallSubset)}, which has an accuracy of {bestOverallAccuracy * 100:.1f}%")
     return currentFeaturesAndAccuracy
 
 def main():
     df = readDatasetAndCreateDataframe()
-    featuresAndAccuracy = backwardEliminationSearch(df)
+    featuresAndAccuracy = featureSelectionSearch(df)
 
     print(featuresAndAccuracy)
 
