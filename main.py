@@ -71,7 +71,7 @@ def leaveOneOutCrossValidation(df, currentSet, featureToAdd):
 
     return successfulPredicitons / dfNumRows
 
-def featureSelectionSearch(df):
+def forwardSelectionSearch(df):
     dfNumRows = df.shape[0]
     dfNumCols = df.shape[1] - 1
 
@@ -195,9 +195,24 @@ def backwardEliminationSearch(df):
     print(f"Finished search! The best feature subset is {set(bestOverallSubset)}, which has an accuracy of {bestOverallAccuracy * 100:.1f}%")
     return currentFeaturesAndAccuracy
 
+def chooseAlgorithm():
+    # Prompt user to select a search algorithm
+    print("1. Forward Selection\n")
+    print("2. Backward Elimination\n")
+    optionSelected = input("Choose Algorithm: ")
+
+    # Return the chosen search function OR throw error if input is NOT 1 or 2
+    if optionSelected == "1":
+        return forwardSelectionSearch
+    elif optionSelected == "2":
+        return backwardEliminationSearch
+    else:
+        raise ValueError("Invalid option, please only enter [1, 2].")
+
 def main():
     df = readDatasetAndCreateDataframe()
-    featuresAndAccuracy = featureSelectionSearch(df)
+    searchAlgorithm = chooseAlgorithm()
+    featuresAndAccuracy = searchAlgorithm(df)
 
     print(featuresAndAccuracy)
 
