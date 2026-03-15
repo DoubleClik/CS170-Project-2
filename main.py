@@ -71,7 +71,7 @@ def leaveOneOutCrossValidation(df, currentSet, featureToAdd):
 
     return successfulPredicitons / dfNumRows
 
-def featureSelectionSearch(df):
+def forwardSelectionSearch(df):
     dfNumRows = df.shape[0]
     dfNumCols = df.shape[1] - 1 # Exclude class label column 0
     
@@ -98,9 +98,43 @@ def featureSelectionSearch(df):
 
     return currentFeaturesAndAccuracy
 
+def backwardEliminationSearch(df):
+    dfNumRows = df.shape[0]
+    dfNumCols = df.shape[1] - 1  # Exclude class label column 0
+
+    features = list(range(1, dfNumCols + 1))  # Start with ALL features
+    currentFeaturesAndAccuracy = []            # Tracks (removed feature, bestAccuracy)
+
+    for level in range(1, dfNumCols + 1):
+        featureIndex = 0
+        bestIndex = 0
+        bestAccuracy = 0.0
+
+        for feature in features:
+            candidateSet = [f for f in features if f != feature]
+            
+            # Skip if no features left to evaluate
+            if len(candidateSet) == 0:
+                bestIndex = featureIndex
+                bestAccuracy = 0.0
+                featureIndex += 1
+                continue
+
+            accuracy = leaveOneOutCrossValidation(df, candidateSet[:-1], candidateSet[-1])
+            
+            if accuracy > bestAccuracy:
+                bestAccuracy = accuracy
+                bestIndex = featureIndex
+            featureIndex += 1
+
+        item = features.pop(bestIndex)
+        currentFeaturesAndAccuracy.append((item, bestAccuracy))
+
+    return currentFeaturesAndAccuracy
+
 def main():
     df = readDatasetAndCreateDataframe()
-    featuresAndAccuracy = featureSelectionSearch(df)
+    featuresAndAccuracy = backwardEliminationSearch(df)
 
     print(featuresAndAccuracy)
 
